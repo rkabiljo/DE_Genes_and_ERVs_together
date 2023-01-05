@@ -147,6 +147,7 @@ head(resIHWOrdered,10)
 
 write.table(resIHWOrdered, "genesDEres.txt",sep="\t")
 ```
+<b>If you are working only with genes, stop here :)
 
 # Run DE - merge genes and ERVs
 
