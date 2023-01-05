@@ -31,6 +31,7 @@ phe$Status %<>% relevel("1")
 ```
 <br>
 # Derive SV1 and SizeFactors from gene counts
+
 ```
 library(DESeq2)
 gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
@@ -70,21 +71,62 @@ design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status
 design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + Site_Specimen_Collected + SV1 + Status
 
 #Once this table has been written, there will be no need next time to run it from the beginning.  Instead, the table can be loaded with these sizeFactors and SV1
-write.table(colData(dds_genes), file = "samples.design.updated.sv1.171subjects.txt",quote=FALSE,sep="\t")
+write.table(colData(dds_genes), file = "samples.design.updated.txt",quote=FALSE,sep="\t")
 
 ```
 <br>
-
+if the table exist, load it and skip the size factors and sva
 
 <br>
-if the table exist, load it
+
 ```
-code
+phe <- read.table("samples.design.updated.txt",row.names=1,header=T,check.names=FALSE)
+
+#it still needs factorising
+
+phe$Sex<- as.factor(phe$Sex)
+phe$Status<- as.factor(phe$Status)
+phe$Sex<- as.factor(phe$Sex)
+phe$AgeCat<- as.factor(phe$AgeCat)
+phe$PMDCat<- as.factor(phe$PMDCat)
+phe$RINCat <- as.factor(phe$RINCat)
+#for TargetALS only, there is also Site_Specimen_Collected
+#phe$Site_Specimen_Collected <- as.factor(phe$Site_Specimen_Collected)
+
+#set status 1 as the baseline, in my case these are controls
+library("magrittr")
+phe$Status %<>% relevel("1")
+```
+<br>From pre-loaded table, read in the matrix, define design and filter as before <br>
 ```
 
-# Run DE
 ```
-code
+gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
+
+phe_g<-phe
+phe_g<-phe_g[colnames(gene_cts),]
+dds_genes <- DESeqDataSetFromMatrix(countData = gene_cts, colData = phe_g , design = ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status)
+
+#In TargetALS there is also site where the secimen was collected
+#dds_genes <- DESeqDataSetFromMatrix(countData = gene_cts, colData = phe_g , design = ~ Sex + AgeCat + PMDCat + RINCat + Site_Specimen_Collected + SV1 + Status)
+
+#filter our rows with low counts
+idx <- rowSums( counts(dds_genes, normalized=T) >= 5 ) >= 10
+dds_genes <- dds_genes[idx,]
+
+```
+
+# Run DE - genes only
+```
+library("IHW")
+dds_genes <- DESeq(dds_genes)
+resIHW <- results(dds_genes, filterFun=ihw)
+resIHWOrdered <- resIHW[order(resIHW$pvalue),]
+#explore
+sum(resIHW$padj < 0.05, na.rm=TRUE)
+head(resIHWOrdered,10)
+
+write.table(resIHWOrdered, "genesDEres.txt",sep="\t")
 ```
 
 #If needed, separate gene and ERV results
