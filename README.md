@@ -98,7 +98,7 @@ library("magrittr")
 phe$Status %<>% relevel("1")
 ```
 <br>From pre-loaded table, read in the matrix, define design and filter as before <br>
-```
+
 
 ```
 gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
@@ -129,7 +129,48 @@ head(resIHWOrdered,10)
 write.table(resIHWOrdered, "genesDEres.txt",sep="\t")
 ```
 
-#If needed, separate gene and ERV results
+# Run DE - merge genes and ERVs
+
+<br>This assumes that phenotype data (phe) is already processed: factorised, and SV1 and SizeFactors are in that phe table <br>
+
 ```
-code
+gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T,check.names=FALSE)
+gene_cts<-gene_cts[,rownames(phe)]
+#this is raw erv counts, NOT the ones normalised in ERVmap script
+cts <- read.table("merged_erv.txt",row.names=1,header=T,check.names=FALSE)
+cts<-cts[,rownames(phe)]
+gene_erv_cts<-rbind(gene_cts,cts)
+
+#sanity check
+dim(gene_erv_cts)
+dim(gene_cts)
+dim(cts)
+
+dds_genes <- DESeqDataSetFromMatrix(countData = gene_erv_cts, colData = phe , design = ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status)
+#target
+#dds_genes <- DESeqDataSetFromMatrix(countData = gene_erv_cts, colData = phe , design = ~ Sex + AgeCat + PMDCat + RINCat + Site_Specimen_Collected + SV1 + Status)
+
+#filter low counts
+idx <- rowSums( counts(dds_genes, normalized=T) >= 5 ) >= 10
+dds_genes <- dds_genes[idx,]
+dds_genes
+
+#run DE
+dds_genes <- DESeq(dds_genes)
+resIHW <- results(dds_genes, filterFun=ihw)
+resIHWOrdered <- resIHW[order(resIHW$pvalue),]
+
+#explore
+sum(resIHW$padj < 0.05, na.rm=TRUE)
+sum(resIHW$padj < 0.05 & abs(resIHW$log2FoldChange)>0.2, na.rm=TRUE)
+write.table(resIHWOrdered, "genes_ervs_DE_res.txt",sep="\t")
+
+```
+If needed, separate gene and ERV results
+```
+
+library(tidyverse)
+erv_res <- as.data.frame(resIHWOrdered) %>%
+  filter(!grepl("ENSG", rownames(resIHWOrdered)))
+write.table(erv_res, "ervs_DE_res.txt",sep="\t")
 ```
