@@ -1,6 +1,11 @@
 # DE_Genes_and_ERVs_together
-R code to performs differential expression of genes and ERVs together, but normalised according to genes only.  If you are working with genes only, the first part of the script can be run independently
+R code to perform differential expression of genes and ERVs together, but normalised according to genes only.  If you are working with genes only, the first part of the script can be run independently. This follows after the https://github.com/rkabiljo/RNASeq_Genes_ERVs pipeline.
 
+## Dependencies
+
+<br>1.phenotype.txt: the phenotype table with all the variables needed for the analysis.  In our case: Status, Sex, Age, PMD, RIN, Site_Specimen_Collected
+<br>2.merged_cellular.txt: matrix with raw merged cellular counts,in our case coming from HTseq
+<br>3.merged_erv.txt: matrix with raw merged ERV counts,in our case coming from ERVMap 
 
 ## Load Phenotype Data, categorise variables
 <br> if it is the first time, derive the categories needed.  If the table with categories, sizeFactor column and SV1 exists, skip to that part below <br>
