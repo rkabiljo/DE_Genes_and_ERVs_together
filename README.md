@@ -30,8 +30,9 @@ library("magrittr")
 phe$Status %<>% relevel("1")
 ```
 
-## Derive SV1 and SizeFactors from gene counts (normalisation) and filter
+## Normalise, Filter, Derive SV1 and SizeFactors from gene counts
 
+### Read gene counts, normalise
 ```
 library(DESeq2)
 gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
@@ -45,13 +46,15 @@ dds_genes <- DESeqDataSetFromMatrix(countData = gene_cts, colData = phe_g , desi
 
 #this estimates size factors and performs normalisation according to these
 dds_genes <- estimateSizeFactors(dds_genes)
+```
 
-#filter our rows with low counts
+### filter rows with low counts
+```
 idx <- rowSums( counts(dds_genes, normalized=T) >= 5 ) >= 10
 dds_genes <- dds_genes[idx,]
 ```
 
-## derive surrogate variables
+### derive surrogate variables
 
 ```
 library("sva")
@@ -71,7 +74,7 @@ dds_genes$SV1 <- svseq$sv
 
 ```
 
-## update the design to use these surrogate variables
+### update the design to use these surrogate variables
 
 ```
 design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status
@@ -79,7 +82,7 @@ design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status
 design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + Site_Specimen_Collected + SV1 + Status
 ```
 
-## write the table with everything we derived so far, so that the next time we can start from that table
+### write the table with everything we derived so far, so that the next time we can start from that table
 ```
 write.table(colData(dds_genes), file = "samples.design.updated.txt",quote=FALSE,sep="\t")
 
@@ -87,12 +90,15 @@ write.table(colData(dds_genes), file = "samples.design.updated.txt",quote=FALSE,
 
 # If the table with SV1 and sizeFactor exist, start from HERE
 
+## Read the table saved - as above
 
 ```
 phe <- read.table("samples.design.updated.txt",row.names=1,header=T,check.names=FALSE)
+```
 
-#it still needs factorising
+### Prepare the data: factorise, relevel
 
+```
 phe$Sex<- as.factor(phe$Sex)
 phe$Status<- as.factor(phe$Status)
 phe$Sex<- as.factor(phe$Sex)
@@ -106,7 +112,7 @@ phe$RINCat <- as.factor(phe$RINCat)
 library("magrittr")
 phe$Status %<>% relevel("1")
 ```
-## From pre-loaded table, read in the matrix, define design and filter as before <br>
+### Read in the gene matrix, define design and filter as before <br>
 
 ```
 gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
@@ -137,9 +143,9 @@ head(resIHWOrdered,10)
 write.table(resIHWOrdered, "genesDEres.txt",sep="\t")
 ```
 
-## Run DE - merge genes and ERVs
+# Run DE - merge genes and ERVs
 
-<br>This assumes that phenotype data (phe) is already processed: factorised, and SV1 and SizeFactors are in that phe table <br>
+<br>This assumes that phenotype data (phe) is already processed: factorised, and SV1 and SizeFactors are in that phe table. See Section 'If the table with SV1 and sizeFactor exist, start from HERE' <br>
 
 ```
 gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T,check.names=FALSE)
@@ -157,18 +163,22 @@ dim(cts)
 dds_genes <- DESeqDataSetFromMatrix(countData = gene_erv_cts, colData = phe , design = ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status)
 #target
 #dds_genes <- DESeqDataSetFromMatrix(countData = gene_erv_cts, colData = phe , design = ~ Sex + AgeCat + PMDCat + RINCat + Site_Specimen_Collected + SV1 + Status)
+```
 
-#filter low counts
+### filter low counts
+```
 idx <- rowSums( counts(dds_genes, normalized=T) >= 5 ) >= 10
 dds_genes <- dds_genes[idx,]
 dds_genes
+```
 
-#run DE
+### run DE on the merged genes and ervs
+```
 dds_genes <- DESeq(dds_genes)
 resIHW <- results(dds_genes, filterFun=ihw)
 resIHWOrdered <- resIHW[order(resIHW$pvalue),]
 ```
-## explore and write results
+### explore and write results
 ```
 sum(resIHW$padj < 0.05, na.rm=TRUE)
 sum(resIHW$padj < 0.05 & abs(resIHW$log2FoldChange)>0.2, na.rm=TRUE)
