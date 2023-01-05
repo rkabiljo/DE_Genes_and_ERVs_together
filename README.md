@@ -1,8 +1,8 @@
 # DE_Genes_and_ERVs_together
-this performs differential expression of genes and ERVs together, but normalised according to genes only
+R code to performs differential expression of genes and ERVs together, but normalised according to genes only.  If you are working with genes only, the first part of the script can be run independently
 
-<br>
-# Load Phenotype Data - step1, categorise variables
+
+## Load Phenotype Data, categorise variables
 <br> if it is the first time, derive the categories needed.  If the table with categories, sizeFactor column and SV1 exists, skip to that part below <br>
 
 ```
@@ -29,8 +29,8 @@ phe$RINCat <- as.factor(phe$RINCat)
 library("magrittr")
 phe$Status %<>% relevel("1")
 ```
-<br>
-# Derive SV1 and SizeFactors from gene counts
+
+## Derive SV1 and SizeFactors from gene counts (normalisation) and filter
 
 ```
 library(DESeq2)
@@ -49,8 +49,11 @@ dds_genes <- estimateSizeFactors(dds_genes)
 #filter our rows with low counts
 idx <- rowSums( counts(dds_genes, normalized=T) >= 5 ) >= 10
 dds_genes <- dds_genes[idx,]
+```
 
-#derive surrogate variables
+## derive surrogate variables
+
+```
 library("sva")
 dat  <- counts(dds_genes, normalized = TRUE)
 idx  <- rowMeans(dat) > 1
@@ -66,18 +69,24 @@ svseq <- svaseq(dat, mod, mod0, n.sv = nsv)
 dds_genes$SV1 <- svseq$sv
 #if nsv is more than 1, adjust that and use as many as there are
 
+```
+
+## update the design to use these surrogate variables
+
+```
 design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + SV1 + Status
 #for TargetALS add site
 design(dds_genes) <- ~ Sex + AgeCat + PMDCat + RINCat + Site_Specimen_Collected + SV1 + Status
+```
 
-#Once this table has been written, there will be no need next time to run it from the beginning.  Instead, the table can be loaded with these sizeFactors and SV1
+## write the table with everything we derived so far, so that the next time we can start from that table
+```
 write.table(colData(dds_genes), file = "samples.design.updated.txt",quote=FALSE,sep="\t")
 
 ```
-<br>
-if the table exist, load it and skip the size factors and sva
 
-<br>
+# If the table with SV1 and sizeFactor exist, start from HERE
+
 
 ```
 phe <- read.table("samples.design.updated.txt",row.names=1,header=T,check.names=FALSE)
@@ -97,8 +106,7 @@ phe$RINCat <- as.factor(phe$RINCat)
 library("magrittr")
 phe$Status %<>% relevel("1")
 ```
-<br>From pre-loaded table, read in the matrix, define design and filter as before <br>
-
+## From pre-loaded table, read in the matrix, define design and filter as before <br>
 
 ```
 gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
@@ -116,7 +124,7 @@ dds_genes <- dds_genes[idx,]
 
 ```
 
-# Run DE - genes only
+## Run DE - genes only
 ```
 library("IHW")
 dds_genes <- DESeq(dds_genes)
@@ -129,7 +137,7 @@ head(resIHWOrdered,10)
 write.table(resIHWOrdered, "genesDEres.txt",sep="\t")
 ```
 
-# Run DE - merge genes and ERVs
+## Run DE - merge genes and ERVs
 
 <br>This assumes that phenotype data (phe) is already processed: factorised, and SV1 and SizeFactors are in that phe table <br>
 
@@ -159,14 +167,15 @@ dds_genes
 dds_genes <- DESeq(dds_genes)
 resIHW <- results(dds_genes, filterFun=ihw)
 resIHWOrdered <- resIHW[order(resIHW$pvalue),]
-
-#explore
+```
+## explore and write results
+```
 sum(resIHW$padj < 0.05, na.rm=TRUE)
 sum(resIHW$padj < 0.05 & abs(resIHW$log2FoldChange)>0.2, na.rm=TRUE)
 write.table(resIHWOrdered, "genes_ervs_DE_res.txt",sep="\t")
 
 ```
-If needed, separate gene and ERV results
+If needed, separate gene and ERV results.  In my example, every line which does not have 'ENSG' will be an ERV line and I am saving these separately
 ```
 
 library(tidyverse)
