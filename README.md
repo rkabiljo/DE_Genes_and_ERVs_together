@@ -40,7 +40,7 @@ phe$Status %<>% relevel("1")
 ### Read gene counts, normalise
 ```
 library(DESeq2)
-gene_cts <- read.table("merged_cellular.txt",row.names=1,header=T)
+gene_cts <- read.table("geneMatrixEdited.txt",row.names=1,header=T)
 
 phe_g<-phe
 phe_g<-phe_g[colnames(gene_cts),]
